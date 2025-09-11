@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BEACON PING // Node Ω-19</title>
+    <style>
+      /* ====== Retro brutalist variables ====== */
+      :root {
+        --ink: #0a0a0a; /* page bg */
+        --paper: #e6d8ad; /* terminal amber */
+        --border: #e6d8ad; /* chunky lines */
+        --accent: #c9b680; /* captions */
+        --amber: #ffc979; /* glow core */
+        --amber-hot: #ff9e3d; /* glow edge */
+        --rate: 1200ms; /* default ping period (JS can override) */
+        --ring-size: 120px; /* size of expanding ring */
+        --bulb-size: 22px; /* diameter of the beacon bulb */
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--ink);
+        color: var(--paper);
+        font: 16px/1.45 monospace;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .wrap {
+        width: min(900px, 94vw);
+      }
+      .frame {
+        background: #000;
+        border: 4px solid var(--border);
+        box-shadow: 0 0 0 2px #000 inset, 0 8px 40px #000;
+      }
+
+      header {
+        padding: 18px 20px 8px;
+        border-bottom: 3px solid var(--border);
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 0.25rem 0;
+        letter-spacing: 0.03em;
+      }
+      .tag {
+        margin: 0.1rem 0 0.6rem 0;
+        color: var(--accent);
+        font-size: 0.95rem;
+      }
+
+      nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 10px 14px 16px;
+        border-bottom: 3px solid var(--border);
+      }
+      nav a {
+        text-decoration: none;
+        color: var(--paper);
+        padding: 8px 10px;
+        border: 3px solid var(--border);
+        background: #111;
+        box-shadow: inset 0 0 0 2px #000;
+      }
+      nav a:hover {
+        background: #0d0d0d;
+        text-decoration: underline;
+      }
+
+      main {
+        padding: 18px 20px;
+      }
+      figure {
+        margin: 0;
+        padding: 16px;
+        text-align: center;
+        border: 3px solid var(--border);
+        background: #111;
+        box-shadow: inset 0 0 0 2px #000;
+      }
+      figcaption {
+        margin-top: 10px;
+        color: var(--accent);
+      }
+
+      /* ====== Beacon assembly ====== */
+      .beacon {
+        position: relative;
+        margin: 10px auto 6px;
+        width: 280px;
+        height: 180px;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(
+            220px 120px at 50% 100%,
+            #050505 0 60%,
+            transparent 61%
+          ),
+          #000;
+        border: 3px solid var(--border);
+      }
+      /* mast & dish for a minimal silhouette */
+      .dish {
+        width: 130px;
+        height: 18px;
+        background: #222;
+        border: 3px solid var(--border);
+        box-shadow: inset 0 0 0 2px #000;
+      }
+      .mast {
+        width: 6px;
+        height: 60px;
+        background: #222;
+        border: 3px solid var(--border);
+        box-shadow: inset 0 0 0 2px #000;
+        margin-top: -2px;
+      }
+
+      /* the beacon bulb */
+      .bulb {
+        position: absolute;
+        top: 92px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: var(--bulb-size);
+        height: var(--bulb-size);
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at 40% 40%,
+          #fff 0 40%,
+          var(--amber) 41% 70%,
+          #0000 71%
+        );
+        filter: brightness(0.7);
+        box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000;
+        transition: filter 0.12s linear, box-shadow 0.12s linear;
+      }
+
+      /* ring that expands on each ping (class toggled by JS) */
+      .ring {
+        position: absolute;
+        top: 92px;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid var(--paper);
+        opacity: 0;
+        pointer-events: none;
+      }
+      .ring.pulse {
+        animation: ringExpand var(--rate) ease-out 1 forwards;
+      }
+      @keyframes ringExpand {
+        0% {
+          opacity: 0.9;
+          width: 12px;
+          height: 12px;
+          border-color: var(--paper);
+        }
+        70% {
+          opacity: 0.35;
+          width: var(--ring-size);
+          height: var(--ring-size);
+          border-color: var(--amber);
+        }
+        100% {
+          opacity: 0;
+          width: var(--ring-size);
+          height: var(--ring-size);
+        }
+      }
+      .constring {
+        opacity: 0.35;
+        width: var(--ring-size);
+        height: var(--ring-size);
+        border-color: var(--amber);
+      }
+
+      /* lit state */
+      .on .bulb {
+        filter: brightness(1.2);
+        box-shadow: 0 0 12px 3px var(--amber), 0 0 36px 8px var(--amber-hot),
+          0 0 0 2px #000, inset 0 0 0 2px #000;
+      }
+
+      /* counters */
+      .stats {
+        margin-top: 8px;
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        color: var(--accent);
+      }
+      .chip {
+        border: 2px solid var(--border);
+        padding: 4px 8px;
+        background: #0b0b0b;
+      }
+
+      /* reduced motion: freeze animation, show steady indicator */
+      @media (prefers-reduced-motion: reduce) {
+        .ring,
+        .ring.pulse {
+          animation: none !important;
+          opacity: 0 !important;
+        }
+        .on .bulb {
+          filter: brightness(1);
+          box-shadow: 0 0 8px 2px var(--amber);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="frame">
+        <header>
+          <h1>BEACON PING // Node Ω-19</h1>
+          <p class="tag">
+            Archive Uplink • PUBLIC/REDACTED • If patterns persist, continue as
+            usual.
+          </p>
+        </header>
+
+        <nav aria-label="Primary">
+          <a href="status.html">/status</a>
+          <a href="crew.html">/crew</a>
+          <a href="#mission">#mission</a>
+        </nav>
+
+        <main>
+          <figure aria-labelledby="mission">
+            <div class="beacon" id="beacon">
+              <div class="dish" aria-hidden="true"></div>
+              <div class="mast" aria-hidden="true"></div>
+              <div class="bulb" aria-hidden="true"></div>
+              <div class="ring" id="ring" aria-hidden="true"></div>
+            </div>
+            <figcaption id="mission">
+              Minimal distress beacon. One breath of light, regular as a
+              heartbeat.
+            </figcaption>
+
+            <div class="stats">
+              <span class="chip" id="count">PING: 0000</span>
+              <span class="chip" id="last">LAST: —</span>
+              <span class="chip">RATE: <code id="rateLabel">1200ms</code></span>
+              <span class="chip">DUTY: <code id="dutyLabel">0.33</code></span>
+            </div>
+          </figure>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      // ====== Tiny JS loop: toggles 'on' and restarts ring animation ======
+      // You can iterate these three numbers to change feel.
+      let RATE_MS = 1200; // total period between pings
+      let DUTY = 0.33; // portion of period the bulb stays ON (0..1)
+      let JITTER = 0.1; // +/- randomization on period (0..1 of RATE)
+
+      // Hook up DOM
+      const beacon = document.getElementById("beacon");
+      const ring = document.getElementById("ring");
+      const countEl = document.getElementById("count");
+      const lastEl = document.getElementById("last");
+      const rateLbl = document.getElementById("rateLabel");
+      const dutyLbl = document.getElementById("dutyLabel");
+      // Reflect rate to CSS var so the ring animation matches the JS loop
+      function setRate(ms) {
+        RATE_MS = ms;
+        document.documentElement.style.setProperty("--rate", ms + "ms");
+        rateLbl.textContent = ms + "ms";
+      }
+      function setDuty(duty) {
+        DUTY = duty;
+        dutyLbl.textContent = duty;
+      }
+      setRate(RATE_MS);
+
+      let count = 0;
+      let stop = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      function ping() {
+        if (stop) return; // respect reduced-motion users
+
+        // Turn light on
+        if (DUTY) {
+          beacon.classList.add("on");
+        }
+
+        // Restart ring animation by toggling class
+        if (RATE_MS != 0) {
+          ring.classList.remove("constring");
+          ring.classList.remove("pulse");
+          // forcing reflow so the animation can retrigger
+          void ring.offsetWidth;
+          ring.classList.add("pulse");
+        } else {
+          ring.classList.add("constring");
+        }
+        // Update counters
+        count++;
+        countEl.textContent = "PING: " + String(count).padStart(4, "0");
+        lastEl.textContent = "LAST: " + new Date().toLocaleTimeString();
+
+        // Schedule light off, then next ping with jitter
+        const onTime = Math.max(80, RATE_MS * DUTY);
+        const nextDelay = Math.max(
+          120,
+          RATE_MS * (1 + (Math.random() * 2 - 1) * JITTER)
+        );
+
+        setTimeout(() => {
+          beacon.classList.remove("on");
+          setTimeout(ping, nextDelay - onTime);
+        }, onTime);
+      }
+
+      // Start loop
+      ping();
+
+      // ===== Optional: quick keyboard tweaks for iteration =====
+      // Up/Down arrows to adjust rate in 100ms steps; Left/Right to change duty.
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowUp") {
+          setRate(Math.max(0, RATE_MS - 100));
+        }
+        if (e.key === "ArrowDown") {
+          setRate(Math.min(40000, RATE_MS + 100));
+        }
+        if (e.key === "ArrowLeft") {
+          setDuty(Math.max(0.0, Math.round((DUTY - 0.05) * 100) / 100));
+        }
+        if (e.key === "ArrowRight") {
+          setDuty(Math.min(1, Math.round((DUTY + 0.05) * 100) / 100));
+        }
+      });
+    </script>
+  </body>
+</html>
