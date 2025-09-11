@@ -6,3 +6,7 @@
     font-weight: bold;
     font-style: normal;
 }
+footer.sticky {
+    position: sticky;
+    bottom: 5px;
+}
