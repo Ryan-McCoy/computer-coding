@@ -1,0 +1,368 @@
+<!-- AI Generated Code Warning -->
+<!-- Initial Prompt: Build a mock-up radio tuning program in HTML, 
+with CSS and JS. Include a small frame with a title, 
+an animated signal meter that changes while scanning and is static when locked,
+and a scan and lock button.
+Include a status line that says when it is scanning and what frequency it is at. -->
+<!-- Prompt 2: Add multiple, vertical signal bars that pulse to show the signal strength
+in frequencies surrounding the current one -->
+<!-- Prompt 3: Replace the multiple bars with a continuous line chart that shows the signal strength. -->
+<!-- Prompt 4: Can you make the bar chart still change slightly even on the same frequencies and when locked? 
+(And more prompts to get it to work) -->
+<!-- A few manual changes to make the subtle changes more noticable -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Radio Tuning Mock-up with Dynamic Signal Chart</title>
+    <style>
+      body {
+        background: #222;
+        color: #eee;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .radio-container {
+        background: #111;
+        border: 2px solid #0f8;
+        border-radius: 12px;
+        width: 340px;
+        padding: 20px 25px;
+        box-shadow: 0 0 15px #0f8a;
+        user-select: none;
+      }
+
+      .title {
+        font-size: 1.4rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 15px;
+        letter-spacing: 1.5px;
+        color: #0f8;
+      }
+
+      .signal-meter {
+        position: relative;
+        height: 80px;
+        background: #222;
+        border: 2px solid #0f8;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        padding: 8px 10px;
+        box-sizing: border-box;
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 15px;
+      }
+
+      button {
+        background: #0f8;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 1rem;
+        color: #111;
+        cursor: pointer;
+        transition: background 0.3s ease;
+        user-select: none;
+      }
+
+      button:hover:not(:disabled) {
+        background: #0c5;
+      }
+
+      button:disabled {
+        background: #046a0f;
+        cursor: not-allowed;
+      }
+
+      .status-line {
+        font-size: 1rem;
+        text-align: center;
+        font-family: monospace;
+        letter-spacing: 0.05em;
+        min-height: 1.4em;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      class="radio-container"
+      role="region"
+      aria-label="Radio Tuning Interface"
+    >
+      <div class="title">Radio Tuner</div>
+      <div class="signal-meter" aria-label="Signal strength meter">
+        <canvas id="signalCanvas" width="300" height="80"></canvas>
+      </div>
+      <div class="controls">
+        <button
+          id="scanBtn"
+          aria-pressed="false"
+          aria-label="Start scanning frequencies"
+        >
+          Scan
+        </button>
+        <button id="lockBtn" disabled aria-label="Lock current frequency">
+          Lock
+        </button>
+      </div>
+      <div
+        class="status-line"
+        aria-live="polite"
+        aria-atomic="true"
+        id="statusLine"
+      >
+        Idle. Frequency: ---.---
+      </div>
+    </div>
+
+    <script>
+      const scanBtn = document.getElementById("scanBtn");
+      const lockBtn = document.getElementById("lockBtn");
+      const statusLine = document.getElementById("statusLine");
+      const canvas = document.getElementById("signalCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const width = canvas.width;
+      const height = canvas.height;
+
+      let scanning = false;
+      let locked = false;
+      let frequency = 88.0; // MHz
+      const freqStep = 0.1; // MHz per step
+      const maxFreq = 108.0;
+      const minFreq = 88.0;
+
+      let animationFrameId = null;
+
+      const NUM_POINTS = 100;
+      const FREQ_RANGE = 2.0;
+
+      // Signal stations with their frequencies
+      function getSignalStrength(freq) {
+        const stations = [90.5, 94.7, 98.3, 102.1, 106.7];
+        let strength = 0.1;
+
+        stations.forEach((st) => {
+          let dist = Math.abs(freq - st);
+          if (dist < 0.3) {
+            strength = Math.max(strength, 0.7 + (0.3 * (0.3 - dist)) / 0.3);
+          } else if (dist < 1.0) {
+            strength = Math.max(strength, 0.3 + 0.4 * (1 - dist));
+          }
+        });
+
+        return Math.min(Math.max(strength, 0), 1);
+      }
+
+      // Wrap frequency between min and max MHz circularly
+      function wrapFreq(freq) {
+        if (freq < minFreq) return freq + (maxFreq - minFreq);
+        if (freq > maxFreq) return freq - (maxFreq - minFreq);
+        return freq;
+      }
+
+      // Noise for subtle variation
+      function noiseValue(x, time) {
+        return 0.02 * Math.sin(x * 10 + time) + 0.01 * (Math.random() - 0.5);
+      }
+
+      // Draw the signal strength chart
+      function drawSignalChart(centerFreq, time = 0, mode = "") {
+        ctx.clearRect(0, 0, width, height);
+
+        // Background grid lines
+        ctx.strokeStyle = "#0f8a";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 6]);
+        for (let y = 10; y < height; y += 15 + Math.sin(Date.now / 100)) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+
+        let freqs = [];
+        for (let i = 0; i < NUM_POINTS; i++) {
+          let offset = (i / (NUM_POINTS - 1) - 0.5) * FREQ_RANGE;
+          freqs.push(wrapFreq(centerFreq + offset));
+        }
+
+        let strengths = freqs.map((f) => getSignalStrength(f));
+
+        // Noise amplitude based on mode
+        let noiseAmp;
+        if (mode === "scanning") noiseAmp = 0.07;
+        else if (mode === "locked") noiseAmp = 0.03;
+        else if (mode === "idle") noiseAmp = 0.01;
+        else noiseAmp = 0;
+
+        strengths = strengths.map((s, i) => {
+          return Math.min(Math.max(s + noiseAmp * noiseValue(i, time), 0), 1);
+        });
+
+        // Gradient fill under curve
+        let gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, "rgba(0, 255, 128, 0.6)");
+        gradient.addColorStop(1, "rgba(0, 255, 128, 0.05)");
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        strengths.forEach((s, i) => {
+          let x = (i / (NUM_POINTS - 1)) * width;
+          let y = height - s * (height - 20) - 10;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fill();
+
+        // Signal line
+        ctx.strokeStyle = "#0f8";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        strengths.forEach((s, i) => {
+          let x = (i / (NUM_POINTS - 1)) * width;
+          let y = height - s * (height - 20) - 10;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Center frequency line
+        ctx.strokeStyle = "#0ff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(width / 2, 10);
+        ctx.lineTo(width / 2, height - 10);
+        ctx.stroke();
+
+        // Highlight circle
+        let centerStrength = strengths[Math.floor(NUM_POINTS / 2)];
+        let cy = height - centerStrength * (height - 20) - 10;
+        ctx.fillStyle = "#0ff";
+        ctx.beginPath();
+        ctx.arc(width / 2, cy, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#08c";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Scanning loop: frequency moves forward steadily
+      function scanningLoop(timestamp) {
+        if (!scanning) return cancelAnimationFrame(animationFrameId);
+        frequency += freqStep;
+        if (frequency > maxFreq) frequency = minFreq;
+        drawSignalChart(frequency, timestamp / 500, "scanning");
+        statusLine.textContent = `Scanning... Frequency: ${frequency.toFixed(
+          3
+        )} MHz`;
+        animationFrameId = requestAnimationFrame(scanningLoop);
+      }
+
+      // Locked loop: frequency fixed but subtle small oscillation added
+      function lockedLoop(timestamp) {
+        if (!locked) return cancelAnimationFrame(animationFrameId);
+        // small slow oscillation of frequency for subtle variation
+        const oscillation = 0.02 * Math.sin(timestamp / 2000);
+        drawSignalChart(frequency + oscillation, timestamp / 1000, "locked");
+        statusLine.textContent = `Locked on frequency: ${frequency.toFixed(
+          3
+        )} MHz`;
+        animationFrameId = requestAnimationFrame(lockedLoop);
+      }
+
+      // Idle loop: no scanning, no lock, slow subtle oscillation to avoid static chart
+      function idleLoop(timestamp) {
+        if (scanning || locked) return cancelAnimationFrame(animationFrameId);
+        const oscillation = 0.1 * Math.sin(timestamp / 3000);
+        drawSignalChart(frequency + oscillation, timestamp / 2000, "idle");
+        statusLine.textContent = `Idle. Frequency: ${frequency.toFixed(3)} MHz`;
+        animationFrameId = requestAnimationFrame(idleLoop);
+      }
+
+      // Start scanning
+      function startScanning() {
+        scanning = true;
+        locked = false;
+        scanBtn.textContent = "Stop";
+        scanBtn.setAttribute("aria-pressed", "true");
+        lockBtn.disabled = true;
+
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(scanningLoop);
+      }
+
+      // Stop scanning
+      function stopScanning() {
+        scanning = false;
+        scanBtn.textContent = "Scan";
+        scanBtn.setAttribute("aria-pressed", "false");
+        lockBtn.disabled = false;
+
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(idleLoop);
+      }
+
+      // Lock or unlock frequency
+      function lockFrequency() {
+        if (!scanning && !locked) {
+          locked = true;
+          lockBtn.textContent = "Unlock";
+          lockBtn.setAttribute("aria-pressed", "true");
+          scanBtn.disabled = true;
+
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = requestAnimationFrame(lockedLoop);
+        } else if (locked) {
+          locked = false;
+          lockBtn.textContent = "Lock";
+          lockBtn.setAttribute("aria-pressed", "false");
+          scanBtn.disabled = false;
+
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = requestAnimationFrame(idleLoop);
+          statusLine.textContent = `Unlocked. Frequency: ${frequency.toFixed(
+            3
+          )} MHz`;
+        }
+      }
+
+      scanBtn.addEventListener("click", () => {
+        if (!scanning) {
+          startScanning();
+        } else {
+          stopScanning();
+        }
+      });
+
+      lockBtn.addEventListener("click", () => {
+        lockFrequency();
+      });
+
+      // Start with idle animation loop
+      animationFrameId = requestAnimationFrame(idleLoop);
+    </script>
+  </body>
+</html>
