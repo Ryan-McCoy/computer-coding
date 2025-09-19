@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signal Visualizer</title>
+    <style>
+      body {
+        margin: 0;
+        background: #000;
+        color: #fff;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        background: #111;
+      }
+      #visualizer {
+        height: 60vh;
+      }
+      #waterfall {
+        height: 30vh;
+      }
+      .controls {
+        margin: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+      }
+      button,
+      input[type="range"],
+      select {
+        margin: 0.25rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        background: #333;
+        color: #fff;
+        cursor: pointer;
+      }
+      button:hover,
+      select:hover {
+        background: #555;
+      }
+      .slider-label {
+        margin: 0 0.5rem;
+      }
+      #barCountValue,
+      #blurValue,
+      #ampValue,
+      #rmsValue {
+        margin-left: 0.5rem;
+        font-weight: bold;
+        color: #f0c060;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button id="startMic">Start Microphone</button>
+      <button id="startTone">Start Tone</button>
+      <button data-mode="bars">Bars</button>
+      <button data-mode="ring">Ring</button>
+      <button data-mode="orbiters">Orbiters</button>
+      <label class="slider-label"
+        >Points:
+        <input
+          id="barCount"
+          type="range"
+          min="16"
+          max="256"
+          step="16"
+          value="128"
+        />
+        <span id="barCountValue">128</span>
+      </label>
+      <label class="slider-label"
+        >Blur:
+        <input
+          id="blurAmount"
+          type="range"
+          min="0"
+          max="20"
+          step="1"
+          value="0"
+        />
+        <span id="blurValue">0</span>px
+      </label>
+      <label class="slider-label"
+        >Amplitude:
+        <input
+          id="amplitude"
+          type="range"
+          min="0.1"
+          max="5"
+          step="0.1"
+          value="1"
+        />
+        <span id="ampValue">1.0</span>x
+      </label>
+      <label class="slider-label"
+        >Palette:
+        <select id="palette">
+          <option value="amber">Amber</option>
+          <option value="blue">Blue</option>
+        </select>
+      </label>
+      <label class="slider-label"
+        >RMS Power:
+        <span id="rmsValue">0.00</span>
+      </label>
+    </div>
+    <canvas id="visualizer"></canvas>
+    <canvas id="waterfall"></canvas>
+    <script>
+      const canvas = document.getElementById("visualizer");
+      const ctx = canvas.getContext("2d");
+      const waterfallCanvas = document.getElementById("waterfall");
+      const wctx = waterfallCanvas.getContext("2d");
+
+      let width, height, wWidth, wHeight;
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight * 0.6;
+        wWidth = waterfallCanvas.width = window.innerWidth;
+        wHeight = waterfallCanvas.height = window.innerHeight * 0.3;
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      let audioCtx, analyser, source;
+      let dataArray, timeArray;
+      let mode = "bars";
+      let barCount = 128;
+      let blurAmount = 0;
+      let amplitude = 1.0;
+      let palette = "amber";
+
+      async function startMic() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        source = audioCtx.createMediaStreamSource(stream);
+        setupAnalyser();
+      }
+
+      function startTone() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        source = osc;
+        setupAnalyser();
+        osc.start();
+      }
+
+      function setupAnalyser() {
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        timeArray = new Uint8Array(analyser.fftSize);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        draw();
+      }
+
+      function getColor(value) {
+        if (palette === "amber") {
+          return `hsl(40, 100%, ${20 + (value / 255) * 50}%)`;
+        } else if (palette === "blue") {
+          return `hsl(200, 100%, ${20 + (value / 255) * 50}%)`;
+        }
+      }
+
+      function computeRMS() {
+        analyser.getByteTimeDomainData(timeArray);
+        let sumSquares = 0;
+        for (let i = 0; i < timeArray.length; i++) {
+          let v = (timeArray[i] - 128) / 128; // normalize to -1..1
+          sumSquares += v * v;
+        }
+        return Math.sqrt(sumSquares / timeArray.length);
+      }
+
+      function draw() {
+        requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+
+        // Main visualizer
+        ctx.clearRect(0, 0, width, height);
+        ctx.filter = `blur(${blurAmount}px)`;
+
+        const step = Math.floor(dataArray.length / barCount);
+
+        if (mode === "bars") {
+          const barWidth = (width / barCount) * 0.8;
+          let x = 0;
+          for (let i = 0; i < barCount; i++) {
+            const barHeight = dataArray[i * step] * amplitude;
+            ctx.fillStyle = getColor(barHeight);
+            ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+            x += barWidth + 2;
+          }
+        } else if (mode === "ring") {
+          const radius = Math.min(width, height) / 4;
+          ctx.save();
+          ctx.translate(width / 2, height / 2);
+          for (let i = 0; i < barCount; i++) {
+            const value = dataArray[i * step] * amplitude;
+            const angle = (i / barCount) * Math.PI * 2;
+            const r = radius + value / 2;
+            const x = r * Math.cos(angle);
+            const y = r * Math.sin(angle);
+            ctx.fillStyle = getColor(value);
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        } else if (mode === "orbiters") {
+          ctx.save();
+          ctx.translate(width / 2, height / 2);
+          for (let i = 0; i < barCount; i++) {
+            const value = dataArray[i * step] * amplitude;
+            const angle = Date.now() / 1000 + (i / barCount) * Math.PI * 2;
+            const r = 50 + value;
+            const x = r * Math.cos(angle);
+            const y = r * Math.sin(angle);
+            ctx.fillStyle = getColor(value);
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        ctx.filter = "none"; // reset filter
+
+        // Waterfall spectrum analyzer
+        const imgData = wctx.getImageData(0, 0, wWidth, wHeight);
+        wctx.putImageData(imgData, 0, 1); // shift image down
+        for (let x = 0; x < wWidth; x++) {
+          const index = Math.floor((x / wWidth) * dataArray.length);
+          const value = dataArray[index];
+          wctx.fillStyle = getColor(value);
+          wctx.fillRect(x, 0, 1, 1); // newest row at top
+        }
+
+        // Update RMS value
+        const rms = computeRMS();
+        document.getElementById("rmsValue").textContent = rms.toFixed(2);
+      }
+
+      document.getElementById("startMic").onclick = startMic;
+      document.getElementById("startTone").onclick = startTone;
+      document.querySelectorAll("button[data-mode]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          mode = btn.dataset.mode;
+        });
+      });
+
+      const barCountInput = document.getElementById("barCount");
+      const barCountValue = document.getElementById("barCountValue");
+      barCountInput.addEventListener("input", (e) => {
+        barCount = parseInt(e.target.value);
+        barCountValue.textContent = barCount;
+      });
+
+      const blurInput = document.getElementById("blurAmount");
+      const blurValue = document.getElementById("blurValue");
+      blurInput.addEventListener("input", (e) => {
+        blurAmount = parseInt(e.target.value);
+        blurValue.textContent = blurAmount;
+      });
+
+      const ampInput = document.getElementById("amplitude");
+      const ampValue = document.getElementById("ampValue");
+      ampInput.addEventListener("input", (e) => {
+        amplitude = parseFloat(e.target.value);
+        ampValue.textContent = amplitude.toFixed(1);
+      });
+
+      document.getElementById("palette").addEventListener("change", (e) => {
+        palette = e.target.value;
+      });
+    </script>
+  </body>
+</html>

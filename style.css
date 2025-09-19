@@ -1,4 +1,4 @@
-:root {
+.background {
     background-color: gray;
     color: black;
     font-family: "Google Sans Code", monospace;
@@ -9,4 +9,7 @@
 footer.sticky {
     position: sticky;
     bottom: 5px;
+}
+a {
+    color: blue;
 }
