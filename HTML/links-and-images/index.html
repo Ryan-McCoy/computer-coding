@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href="../../style.css" />
+    <!-- Stylesheet is up two directories -->
+  </head>
+  <body class="background">
+    <header class="sticky">
+      <img src="images/logo.jpg" alt="Random logo" width="100" height="100" />
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+    </header>
+
+    <main>
+      <h1>Links & Images Demo</h1>
+      <p>
+        This page demonstrates relative and absolute links, plus images with alt
+        text.
+      </p>
+
+      <h2>Absolute vs Relative Links</h2>
+      <ul>
+        <li>
+          Absolute (external):
+          <a
+            href="https://www.theodinproject.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            >The Odin Project</a
+          >
+        </li>
+        <li>Relative (internal): <a href="about.html">About page</a></li>
+      </ul>
+
+      <h2>Remote Image</h2>
+      <img
+        src="https://picsum.photos/800/500"
+        alt="Random scenic placeholder"
+      />
+
+      <h2>Local Image</h2>
+      <figure>
+        <img src="images/lighthouse.jpg" alt="A forest" width="1200" />
+        <figcaption>A local image referenced with a relative path.</figcaption>
+      </figure>
+    </main>
+
+    <h2>Path Practice</h2>
+    <ul>
+      <li><a href="./about.html">About (./about.html)</a></li>
+      <li>
+        <a href="../../"
+          >This will go up two directories (breaks if you're at project root)</a
+        >
+      </li>
+      <!-- ./ means the parent directory, or the directory the current file is in. ../ means that directories parent, and ../../ is that directories parent. -->
+      <li><a href="images/lighthouse.jpg" download>Download local image</a></li>
+    </ul>
+    <footer class="sticky">
+      <small>&copy; 2025 Your Name</small>
+    </footer>
+  </body>
+</html>

@@ -9,6 +9,18 @@
 footer.sticky {
     position: sticky;
     bottom: 5px;
+    background-color: gray;
+    outline: 5px black solid;
+}
+nav.sticky,
+header.sticky {
+    position: sticky;
+    top: 5px;
+    background-color: gray;
+    outline: 5px black solid;
+}
+header img {
+    display: inline;
 }
 a {
     color: blue;
