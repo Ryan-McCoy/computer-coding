@@ -1,0 +1,258 @@
+<!-- https://chatgpt.com/share/68d3026b-cbac-8010-90dd-73fa72611564 -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audio Polygon</title>
+    <style>
+      body {
+        margin: 0;
+        background: black;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        color: white;
+        font-family: sans-serif;
+      }
+      #visualizer {
+        flex: 1;
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .control-section {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-top: 1px solid #333;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="visualizer"></canvas>
+
+    <!-- General Controls -->
+    <div class="control-section" id="generalControls">
+      <button id="start">Start</button>
+      <button id="stop">Stop</button>
+      <label> <input type="checkbox" id="micToggle" /> Use Microphone </label>
+      <label
+        >Min sides:
+        <input type="number" id="minSides" value="3" min="3" max="20"
+      /></label>
+      <label
+        >Max sides:
+        <input type="number" id="maxSides" value="12" min="3" max="20"
+      /></label>
+      <label
+        >Sensitivity:
+        <input
+          type="range"
+          id="sensitivity"
+          min="0.1"
+          max="3"
+          step="0.1"
+          value="1"
+      /></label>
+    </div>
+
+    <!-- Demo Tone Controls -->
+    <div class="control-section" id="demoToneControls">
+      <label
+        >Frequency:
+        <input type="range" id="toneFreq" min="50" max="2000" value="220"
+      /></label>
+      <label
+        >Power:
+        <input type="range" id="tonePower" min="0" max="2" step="0.1" value="1"
+      /></input>
+      <label
+        >Waveform:
+        <select id="toneWaveform">
+          <option value="sine">Sine</option>
+          <option value="square">Square</option>
+          <option value="sawtooth" selected>Sawtooth</option>
+          <option value="triangle">Triangle</option>
+        </select>
+      </label>
+      <label> <input type="checkbox" id="toneWaveToggle" /> Wave Mode </label>
+    </div>
+
+    <!-- Wave Controls -->
+    <div class="control-section" id="waveControls">
+      <label
+        >Wave Depth:
+        <input type="range" id="toneWaveDepth" min="1" max="500" value="100"
+      /></label>
+      <label
+        >Wave Speed:
+        <input
+          type="range"
+          id="toneWaveSpeed"
+          min="0.1"
+          max="10"
+          step="0.1"
+          value="2"
+      /></label>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("visualizer");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = window.innerWidth;
+      canvas.height =
+        window.innerHeight -
+        (document.getElementById("generalControls").offsetHeight +
+          document.getElementById("demoToneControls").offsetHeight +
+          document.getElementById("waveControls").offsetHeight);
+
+      let audioCtx, analyser, source, gainNode, osc;
+      let running = false;
+
+      const startBtn = document.getElementById("start");
+      const stopBtn = document.getElementById("stop");
+      const micToggle = document.getElementById("micToggle");
+      const minSidesInput = document.getElementById("minSides");
+      const maxSidesInput = document.getElementById("maxSides");
+      const sensitivityInput = document.getElementById("sensitivity");
+
+      const toneFreq = document.getElementById("toneFreq");
+      const tonePower = document.getElementById("tonePower");
+      const toneWaveToggle = document.getElementById("toneWaveToggle");
+      const toneWaveDepth = document.getElementById("toneWaveDepth");
+      const toneWaveSpeed = document.getElementById("toneWaveSpeed");
+      const toneWaveform = document.getElementById("toneWaveform");
+
+      const fftSize = 1024;
+      function createAnalyser() {
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = fftSize;
+      }
+
+      function start() {
+        if (running) return;
+        running = true;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        createAnalyser();
+
+        if (micToggle.checked) {
+          navigator.mediaDevices
+            .getUserMedia({ audio: true })
+            .then((stream) => {
+              source = audioCtx.createMediaStreamSource(stream);
+              source.connect(analyser);
+            });
+        } else {
+          osc = audioCtx.createOscillator();
+          osc.type = toneWaveform.value;
+          osc.frequency.value = parseFloat(toneFreq.value);
+
+          gainNode = audioCtx.createGain();
+          gainNode.gain.value = parseFloat(tonePower.value);
+
+          osc.connect(gainNode);
+          gainNode.connect(analyser);
+          osc.start();
+        }
+        animate();
+      }
+
+      function stop() {
+        if (!running) return;
+        running = false;
+        if (osc) osc.stop();
+        if (audioCtx) audioCtx.close();
+      }
+
+      startBtn.onclick = start;
+      stopBtn.onclick = stop;
+
+      function animate(time) {
+        if (!running) return;
+        requestAnimationFrame(animate);
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(dataArray);
+
+        const bass = getFrequencyRange(dataArray, 20, 250);
+        const mid = getFrequencyRange(dataArray, 250, 2000);
+        const treble = getFrequencyRange(dataArray, 2000, 8000);
+        const rms = getRMS(dataArray);
+
+        const minSides = parseInt(minSidesInput.value);
+        const maxSides = parseInt(maxSidesInput.value);
+        const sensitivity = parseFloat(sensitivityInput.value);
+        const numSides = Math.max(
+          minSides,
+          Math.min(maxSides, Math.floor((rms * sensitivity) / 20))
+        );
+
+        if (!micToggle.checked && osc) {
+          osc.type = toneWaveform.value;
+          gainNode.gain.value = parseFloat(tonePower.value);
+
+          if (toneWaveToggle.checked) {
+            const depth = parseFloat(toneWaveDepth.value);
+            const speed = parseFloat(toneWaveSpeed.value);
+            const baseFreq = parseFloat(toneFreq.value);
+            osc.frequency.value =
+              baseFreq + Math.sin(time * 0.001 * speed) * depth;
+          } else {
+            osc.frequency.value = parseFloat(toneFreq.value);
+          }
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(mid / 200);
+
+        const radius = 50 + bass;
+        ctx.beginPath();
+        for (let i = 0; i < numSides; i++) {
+          const angle = (i / numSides) * 2 * Math.PI;
+          const x = radius * Math.cos(angle);
+          const y = radius * Math.sin(angle);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.shadowColor = `rgba(0, 200, 255, ${treble / 255})`;
+        ctx.shadowBlur = treble / 2;
+        ctx.strokeStyle = "cyan";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function getRMS(dataArray) {
+        let sum = 0;
+        for (let v of dataArray) sum += v * v;
+        return Math.sqrt(sum / dataArray.length);
+      }
+
+      function getFrequencyRange(dataArray, fLow, fHigh) {
+        const nyquist = audioCtx.sampleRate / 2;
+        const lowIndex = Math.floor((fLow / nyquist) * dataArray.length);
+        const highIndex = Math.min(
+          dataArray.length - 1,
+          Math.floor((fHigh / nyquist) * dataArray.length)
+        );
+        let sum = 0;
+        for (let i = lowIndex; i <= highIndex; i++) sum += dataArray[i];
+        return sum / (highIndex - lowIndex + 1);
+      }
+    </script>
+  </body>
+</html>
