@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Audio Visualizer — Particle Field</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0b0f17;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      #controls {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 8px;
+        color: #fff;
+        font-family: sans-serif;
+      }
+      #controls label {
+        display: block;
+        margin-top: 5px;
+        font-size: 12px;
+      }
+      #controls input {
+        width: 150px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="controls">
+      <button id="micBtn">Use Mic</button>
+      <button id="demoBtn">Demo Tone</button>
+      <label
+        >Inward Force
+        <input
+          id="inwardSlider"
+          type="range"
+          min="0"
+          max="0.1"
+          step="0.001"
+          value="0.01"
+      /></label>
+      <label
+        >Outward Force
+        <input
+          id="outwardSlider"
+          type="range"
+          min="0"
+          max="5"
+          step="0.1"
+          value="2.5"
+      /></label>
+    </div>
+    <script>
+      const canvas = document.getElementById("c");
+      const ctx = canvas.getContext("2d");
+      let W, H, DPR;
+      function resize() {
+        DPR = window.devicePixelRatio || 1;
+        W = canvas.width = window.innerWidth * DPR;
+        H = canvas.height = window.innerHeight * DPR;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(DPR, DPR);
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      let audioCtx, analyser, dataArray;
+      async function initMic() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        dataArray = new Uint8Array(analyser.fftSize);
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
+          const micSource = audioCtx.createMediaStreamSource(stream);
+          micSource.connect(analyser);
+        } catch (e) {
+          alert("Microphone access denied.");
+          console.error(e);
+        }
+      }
+      function initDemo() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        dataArray = new Uint8Array(analyser.fftSize);
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 440;
+        gain.gain.value = 0.3;
+        osc.connect(gain);
+        gain.connect(analyser);
+        gain.connect(audioCtx.destination);
+        osc.start();
+      }
+
+      document.getElementById("micBtn").onclick = () => {
+        initMic();
+      };
+      document.getElementById("demoBtn").onclick = () => {
+        initDemo();
+      };
+
+      let inwardForce = parseFloat(
+        document.getElementById("inwardSlider").value
+      );
+      let outwardForce = parseFloat(
+        document.getElementById("outwardSlider").value
+      );
+
+      document.getElementById("inwardSlider").oninput = (e) => {
+        inwardForce = parseFloat(e.target.value);
+      };
+      document.getElementById("outwardSlider").oninput = (e) => {
+        outwardForce = parseFloat(e.target.value);
+      };
+
+      const baseCircleRadius = 40;
+
+      class Particle {
+        constructor() {
+          this.x = (Math.random() * W) / DPR;
+          this.y = (Math.random() * H) / DPR;
+          this.vx = (Math.random() - 0.5) * 0.5;
+          this.vy = (Math.random() - 0.5) * 0.5;
+          this.size = 1 + Math.random() * 2;
+        }
+        update(audioLevel, circleRadius) {
+          const cx = W / (2 * DPR),
+            cy = H / (2 * DPR);
+          const dx = this.x - cx,
+            dy = this.y - cy;
+          let dist = Math.hypot(dx, dy) + 0.1;
+
+          if (!reduceMotion) {
+            // attraction back to center
+            const ax = (-dx / dist) * inwardForce;
+            const ay = (-dy / dist) * inwardForce;
+            this.vx += ax;
+            this.vy += ay;
+
+            // push outwards proportional to audioLevel, with slight randomness per particle
+            const randomFactor = 0.8 + Math.random() * 0.4; // between 0.8 and 1.2
+            const push = audioLevel * outwardForce * randomFactor;
+            this.vx += (dx / dist) * push;
+            this.vy += (dy / dist) * push;
+
+            this.vx *= 0.95;
+            this.vy *= 0.95;
+            this.x += this.vx;
+            this.y += this.vy;
+          }
+
+          // prevent particle from entering central circle
+          dist = Math.hypot(this.x - cx, this.y - cy);
+          if (dist < circleRadius + this.size) {
+            const angle = Math.atan2(this.y - cy, this.x - cx);
+            this.x = cx + Math.cos(angle) * (circleRadius + this.size);
+            this.y = cy + Math.sin(angle) * (circleRadius + this.size);
+            // bounce slightly
+            this.vx *= -0.5;
+            this.vy *= -0.5;
+          }
+        }
+        draw() {
+          ctx.beginPath();
+          ctx.fillStyle = "rgba(125,211,252,0.7)";
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      let particles = [];
+      for (let i = 0; i < 700; i++) particles.push(new Particle());
+
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+
+      function animate() {
+        ctx.fillStyle = "rgba(11,15,23,0.3)";
+        ctx.fillRect(0, 0, W, H);
+        const cx = W / (2 * DPR),
+          cy = H / (2 * DPR);
+        let audioLevel = 0;
+        if (analyser && dataArray) {
+          analyser.getByteTimeDomainData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const v = (dataArray[i] - 128) / 128;
+            sum += v * v;
+          }
+          audioLevel = Math.sqrt(sum / dataArray.length); // RMS amplitude 0..1
+        }
+
+        const circleRadius =
+          baseCircleRadius + (reduceMotion ? 0 : audioLevel * 60); // expand with noise if motion allowed
+
+        for (let p of particles) {
+          p.update(audioLevel, circleRadius);
+          p.draw();
+        }
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, circleRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(125,211,252,0.4)";
+        ctx.fill();
+        requestAnimationFrame(animate);
+      }
+
+      if (!reduceMotion) animate();
+      else {
+        // Just draw static center circle if reduced motion is preferred
+        const cx = W / (2 * DPR),
+          cy = H / (2 * DPR);
+        ctx.beginPath();
+        ctx.arc(cx, cy, baseCircleRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(125,211,252,0.4)";
+        ctx.fill();
+      }
+    </script>
+  </body>
+</html>
