@@ -10,19 +10,30 @@
 footer.sticky {
     position: sticky;
     bottom: 5px;
-    background-color: gray;
-    outline: 5px black solid;
 }
 nav.sticky,
 header.sticky {
     position: sticky;
     top: 5px;
-    background-color: gray;
-    outline: 5px black solid;
 }
 header img {
     display: inline;
 }
 a {
     color: blue;
+}
+footer.fixed {
+    position: fixed;
+    bottom: 5px;
+}
+header.fixed {
+    position: fixed;
+    top: 5px;
+}
+.fixed,
+.sticky {
+    padding: 5px;
+    outline: 5px black solid;
+    background-color: gray;
+    display: inline;
 }
