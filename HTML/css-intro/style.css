@@ -1,0 +1,76 @@
+/* 1) Base styles */
+:root {
+    --ink: #0f172a;
+    --muted: #64748b;
+    --accent: #0ea5e9;
+    --panel: #ffffff;
+    --bg: #f8fafc;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 8;
+    font-family: monospace;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+}
+
+/* 2) Layout sections */
+header,
+main,
+footer {
+    margin: 0;
+    padding: 16px;
+    background-color: lightgray;
+}
+
+header nav a {
+    margin-right: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    border: black 2px solid;
+    padding: 8px;
+}
+header nav a:hover {
+    text-decoration: underline;
+}
+
+/* 3) Type hierarchy */
+h1 {
+    margin-top: 12px;
+    font-size: 2rem;
+}
+p {
+    margin: 0.75rem 0;
+    color: var(--ink);
+}
+.lead {
+    color: var(--muted);
+    font-size: 1.1rem;
+}
+
+/* 4) Utility examples */
+.card {
+    background: var(--panel);
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+/* 5) Link states demo */
+a:link {
+    color: blue;
+}
+a:visited {
+    opacity: 0.9;
+    color: darkcyan;
+}
+a:hover {
+    color: darkblue;
+}
