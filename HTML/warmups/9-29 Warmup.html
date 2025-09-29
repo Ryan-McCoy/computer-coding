@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Audio Visualizer</title>
+    <style>
+      body {
+        margin: 0;
+        background: black;
+        color: white;
+        font-family: sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      #controls {
+        position: fixed;
+        top: 0;
+        left: 0;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        max-height: 100vh;
+        overflow-y: auto;
+        font-size: 14px;
+      }
+      .color-controls details,
+      .force-controls details {
+        margin-bottom: 0.5em;
+      }
+      .swatch {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        margin-left: 6px;
+        vertical-align: middle;
+        background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
+          linear-gradient(-45deg, #ccc 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #ccc 75%),
+          linear-gradient(-45deg, transparent 75%, #ccc 75%);
+        background-size: 8px 8px;
+        background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <div id="controls">
+      <button id="micBtn">Use Mic</button>
+      <button id="toneBtn">Use Demo Tone</button>
+      <br />
+
+      <div class="color-controls">
+        <details open>
+          <summary>Particles</summary>
+          <input type="color" id="particleColor" value="#00ffff" />
+          <label
+            >Alpha
+            <input
+              type="range"
+              id="particleAlpha"
+              min="0"
+              max="1"
+              step="0.01"
+              value="1"
+          /></label>
+          <span class="swatch" id="particleSwatch"></span>
+        </details>
+
+        <details open>
+          <summary>Circle</summary>
+          <input type="color" id="circleColor" value="#ffffff" />
+          <label
+            >Alpha
+            <input
+              type="range"
+              id="circleAlpha"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.5"
+          /></label>
+          <span class="swatch" id="circleSwatch"></span>
+        </details>
+
+        <details open>
+          <summary>Bars</summary>
+          <input type="color" id="barColor" value="#ff00ff" />
+          <label
+            >Alpha
+            <input
+              type="range"
+              id="barAlpha"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.7"
+          /></label>
+          <span class="swatch" id="barSwatch"></span>
+        </details>
+
+        <details open>
+          <summary>Radial Bars</summary>
+          <input type="color" id="radialColor" value="#ffff00" />
+          <label
+            >Alpha
+            <input
+              type="range"
+              id="radialAlpha"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.7"
+          /></label>
+          <span class="swatch" id="radialSwatch"></span>
+        </details>
+      </div>
+
+      <div class="force-controls">
+        <details open>
+          <summary>Particle Forces</summary>
+          <label
+            >Inward Force
+            <input
+              type="range"
+              id="inwardForce"
+              min="0"
+              max="0.5"
+              step="0.01"
+              value="0.1" /></label
+          ><br />
+          <label
+            >Outward Force
+            <input
+              type="range"
+              id="outwardForce"
+              min="0"
+              max="5"
+              step="0.1"
+              value="1" /></label
+          ><br />
+          <label
+            >Randomness
+            <input
+              type="range"
+              id="randomness"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.2"
+          /></label>
+        </details>
+      </div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      let audioCtx, analyser, dataArray, source;
+
+      function setupAudio(useMic) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        if (useMic) {
+          navigator.mediaDevices
+            .getUserMedia({ audio: true })
+            .then((stream) => {
+              source = audioCtx.createMediaStreamSource(stream);
+              source.connect(analyser);
+            });
+        } else {
+          const osc = audioCtx.createOscillator();
+          osc.type = "sine";
+          osc.frequency.value = 220;
+          const gain = audioCtx.createGain();
+          gain.gain.value = 0.2;
+          osc.connect(gain);
+          gain.connect(analyser);
+          osc.start();
+        }
+      }
+
+      document.getElementById("micBtn").onclick = () => setupAudio(true);
+      document.getElementById("toneBtn").onclick = () => setupAudio(false);
+
+      // color + alpha
+      function updateSwatch(colorInput, alphaInput, swatch) {
+        const hex = colorInput.value;
+        const alpha = parseFloat(alphaInput.value);
+        const rgba = hexToRgba(hex, alpha);
+        swatch.style.backgroundColor = rgba;
+      }
+
+      function hexToRgba(hex, alpha) {
+        const bigint = parseInt(hex.slice(1), 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r},${g},${b},${alpha})`;
+      }
+
+      const controls = [
+        {
+          color: "particleColor",
+          alpha: "particleAlpha",
+          swatch: "particleSwatch",
+        },
+        { color: "circleColor", alpha: "circleAlpha", swatch: "circleSwatch" },
+        { color: "barColor", alpha: "barAlpha", swatch: "barSwatch" },
+        { color: "radialColor", alpha: "radialAlpha", swatch: "radialSwatch" },
+      ];
+
+      controls.forEach((ctrl) => {
+        const c = document.getElementById(ctrl.color);
+        const a = document.getElementById(ctrl.alpha);
+        const s = document.getElementById(ctrl.swatch);
+        const update = () => updateSwatch(c, a, s);
+        c.addEventListener("input", update);
+        a.addEventListener("input", update);
+        update();
+      });
+
+      function getColor(id) {
+        const c = document.getElementById(id + "Color");
+        const a = document.getElementById(id + "Alpha");
+        return hexToRgba(c.value, parseFloat(a.value));
+      }
+
+      // Particle system
+      const particles = [];
+      const numParticles = 150;
+      for (let i = 0; i < numParticles; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: 0,
+          vy: 0,
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!analyser) {
+          requestAnimationFrame(draw);
+          return;
+        }
+
+        analyser.getByteFrequencyData(dataArray);
+        const rms =
+          Math.sqrt(
+            dataArray.reduce((a, b) => a + b * b, 0) / dataArray.length
+          ) / 255;
+
+        // circle
+        ctx.beginPath();
+        ctx.arc(
+          canvas.width / 2,
+          canvas.height / 2,
+          50 + rms * 50,
+          0,
+          Math.PI * 2
+        );
+        ctx.fillStyle = getColor("circle");
+        ctx.fill();
+
+        // particles
+        const inwardForce = parseFloat(
+          document.getElementById("inwardForce").value
+        );
+        const outwardForce = parseFloat(
+          document.getElementById("outwardForce").value
+        );
+        const randomness = parseFloat(
+          document.getElementById("randomness").value
+        );
+
+        particles.forEach((p) => {
+          const dx = canvas.width / 2 - p.x;
+          const dy = canvas.height / 2 - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          // inward pull
+          p.vx += nx * inwardForce;
+          p.vy += ny * inwardForce;
+
+          // outward push based on rms with randomness
+          const push =
+            rms * outwardForce * (1 + (Math.random() * 2 - 1) * randomness);
+          p.vx -= nx * push;
+          p.vy -= ny * push;
+
+          p.x += p.vx;
+          p.y += p.vy;
+
+          // friction
+          p.vx *= 0.9;
+          p.vy *= 0.9;
+
+          ctx.fillStyle = getColor("particle");
+          ctx.fillRect(p.x, p.y, 2, 2);
+        });
+
+        // bars
+        const barWidth = canvas.width / dataArray.length;
+        for (let i = 0; i < dataArray.length; i++) {
+          const val = dataArray[i];
+          const barHeight = val;
+          ctx.fillStyle = getColor("bar");
+          ctx.fillRect(
+            i * barWidth,
+            canvas.height - barHeight,
+            barWidth,
+            barHeight
+          );
+        }
+
+        // radial bars
+        const radius = 60;
+        for (let i = 0; i < dataArray.length; i++) {
+          const angle = (i / dataArray.length) * Math.PI * 2;
+          const val = dataArray[i];
+          const x = canvas.width / 2 + Math.cos(angle) * radius;
+          const y = canvas.height / 2 + Math.sin(angle) * radius;
+          const x2 = canvas.width / 2 + Math.cos(angle) * (radius + val / 2);
+          const y2 = canvas.height / 2 + Math.sin(angle) * (radius + val / 2);
+          ctx.strokeStyle = getColor("radial");
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+
+        requestAnimationFrame(draw);
+      }
+
+      draw();
+    </script>
+  </body>
+</html>
