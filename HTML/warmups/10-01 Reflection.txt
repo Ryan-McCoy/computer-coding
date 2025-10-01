@@ -1,0 +1,3 @@
+I think the biggest change was the keyboard controls. These allow you to toggle everything without needing to open the UI. 
+I did not have a chance to test mine on a projector, as I had to get the visualization to work again.
+The next step would be to test it on an actual projector.

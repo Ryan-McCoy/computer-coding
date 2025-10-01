@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Audio Visualizer</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      :root {
+        --panel-bg: rgba(0, 0, 0, 0.72);
+        --muted: #94a3b8;
+      }
+      body {
+        margin: 0;
+        background: #060711;
+        color: #e6eef6;
+        font-family: Inter, system-ui, Segoe UI, Roboto, Arial;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      #controls {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        background: var(--panel-bg);
+        padding: 10px;
+        border-radius: 10px;
+        max-height: calc(100vh - 16px);
+        overflow: auto;
+        min-width: 230px;
+      }
+      .section {
+        margin-bottom: 8px;
+      }
+      details {
+        margin-bottom: 6px;
+      }
+      label {
+        font-size: 13px;
+        color: var(--muted);
+        display: block;
+        margin-top: 6px;
+      }
+      input[type="color"] {
+        height: 30px;
+        border: 0;
+        background: transparent;
+      }
+      input[type="range"] {
+        width: 150px;
+      }
+      .swatch {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        vertical-align: middle;
+        margin-left: 8px;
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+        background-image: linear-gradient(45deg, #cfcfcf 25%, transparent 25%),
+          linear-gradient(-45deg, #cfcfcf 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #cfcfcf 75%),
+          linear-gradient(-45deg, transparent 75%, #cfcfcf 75%);
+        background-size: 8px 8px;
+        background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+      }
+
+      #helpOverlay {
+        position: fixed;
+        right: 12px;
+        top: 12px;
+        background: rgba(6, 8, 12, 0.86);
+        color: #e6eef6;
+        padding: 12px;
+        border-radius: 10px;
+        max-width: 340px;
+        font-size: 13px;
+        display: none;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      }
+      #helpOverlay h3 {
+        margin: 0 0 6px 0;
+        font-size: 14px;
+      }
+      .hint {
+        opacity: 0.9;
+        margin: 6px 0;
+      }
+
+      button {
+        background: #0ea5a4;
+        border: 0;
+        padding: 6px 8px;
+        border-radius: 8px;
+        color: #012;
+        cursor: pointer;
+        margin-right: 6px;
+      }
+
+      /* make the controls not too tall on mobile */
+      @media (max-width: 520px) {
+        #controls {
+          max-width: 92vw;
+          min-width: unset;
+          padding: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+
+    <div id="controls" aria-hidden="false">
+      <div style="margin-bottom: 8px">
+        <button id="micBtn">Mic (M)</button>
+        <button id="toneBtn">Tone (T)</button>
+      </div>
+
+      <div class="section color-controls">
+        <details open>
+          <summary><strong>Particles</strong></summary>
+          <input id="particleColor" type="color" value="#00ffff" />
+          <label
+            >Alpha
+            <input
+              id="particleAlpha"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="1"
+          /></label>
+          <span class="swatch" id="particleSwatch"></span>
+        </details>
+
+        <details open>
+          <summary><strong>Circle</strong></summary>
+          <input id="circleColor" type="color" value="#ffffff" />
+          <label
+            >Alpha
+            <input
+              id="circleAlpha"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.5"
+          /></label>
+          <span class="swatch" id="circleSwatch"></span>
+        </details>
+
+        <details open>
+          <summary><strong>Bars</strong></summary>
+          <input id="barColor" type="color" value="#ff00ff" />
+          <label
+            >Alpha
+            <input
+              id="barAlpha"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.7"
+          /></label>
+          <span class="swatch" id="barSwatch"></span>
+        </details>
+
+        <details open>
+          <summary><strong>Radial Bars</strong></summary>
+          <input id="radialColor" type="color" value="#ffff00" />
+          <label
+            >Alpha
+            <input
+              id="radialAlpha"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.8"
+          /></label>
+          <span class="swatch" id="radialSwatch"></span>
+        </details>
+      </div>
+
+      <div class="section force-controls">
+        <details open>
+          <summary><strong>Particle Forces</strong></summary>
+          <label
+            >Inward Force
+            <input
+              id="inwardForce"
+              type="range"
+              min="0"
+              max="0.5"
+              step="0.01"
+              value="0.1"
+          /></label>
+          <label
+            >Outward Force
+            <input
+              id="outwardForce"
+              type="range"
+              min="0"
+              max="5"
+              step="0.1"
+              value="1"
+          /></label>
+          <label
+            >Randomness
+            <input
+              id="randomness"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.2"
+          /></label>
+        </details>
+      </div>
+
+      <div style="font-size: 12px; color: var(--muted); margin-top: 6px">
+        Keyboard shortcuts: <strong>M</strong>=mic, <strong>T</strong>=tone,
+        <strong>P</strong>=particles+circle, <strong>B</strong>=bars,
+        <strong>R</strong>=radial, <strong>H</strong>=help,
+        <strong>C</strong>=cycle colors<br />
+        Arrows: <strong>Up/Down</strong>=outward ±0.1,
+        <strong>Left/Right</strong>=inward ±0.1,
+        <strong>Shift+Up/Down</strong>=randomness ±0.1
+      </div>
+    </div>
+
+    <div id="helpOverlay" role="dialog" aria-hidden="true">
+      <h3>Keyboard Controls</h3>
+      <div class="hint"><strong>M</strong> — use microphone input</div>
+      <div class="hint"><strong>T</strong> — use demo tone</div>
+      <div class="hint">
+        <strong>P</strong> — toggle particles &amp; central circle
+      </div>
+      <div class="hint"><strong>B</strong> — toggle flat bars</div>
+      <div class="hint"><strong>R</strong> — toggle radial bars</div>
+      <div class="hint">
+        <strong>Arrow Up / Arrow Down</strong> — increase / decrease
+        <em>outward</em> force by <strong>0.1</strong>
+      </div>
+      <div class="hint">
+        <strong>Arrow Right / Arrow Left</strong> — increase / decrease
+        <em>inward</em> force by <strong>0.1</strong>
+      </div>
+      <div class="hint">
+        <strong>Shift + Arrow Up / Down</strong> — increase / decrease
+        randomness by <strong>0.1</strong>
+      </div>
+      <div class="hint"><strong>C</strong> — cycle color presets</div>
+      <div class="hint"><strong>H</strong> — toggle this help</div>
+    </div>
+
+    <script>
+      // Canvas setup
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resize, { passive: true });
+      resize();
+
+      // Audio
+      let audioCtx = null;
+      let analyser = null;
+      let dataArray = null;
+
+      function setupAudio(useMic) {
+        try {
+          if (audioCtx) {
+            // create a new context to avoid stale state
+            try {
+              audioCtx.close?.();
+            } catch (e) {}
+          }
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+          if (useMic) {
+            navigator.mediaDevices
+              .getUserMedia({ audio: true })
+              .then((stream) => {
+                const src = audioCtx.createMediaStreamSource(stream);
+                src.connect(analyser);
+              })
+              .catch((e) => {
+                alert("Microphone access denied");
+                console.error(e);
+              });
+          } else {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = 220;
+            g.gain.value = 0.2;
+            osc.connect(g);
+            g.connect(analyser);
+            osc.start();
+          }
+        } catch (e) {
+          console.error("Audio init error", e);
+        }
+      }
+
+      // control elements
+      const particleColor = document.getElementById("particleColor");
+      const particleAlpha = document.getElementById("particleAlpha");
+      const circleColor = document.getElementById("circleColor");
+      const circleAlpha = document.getElementById("circleAlpha");
+      const barColor = document.getElementById("barColor");
+      const barAlpha = document.getElementById("barAlpha");
+      const radialColor = document.getElementById("radialColor");
+      const radialAlpha = document.getElementById("radialAlpha");
+
+      const particleSwatch = document.getElementById("particleSwatch");
+      const circleSwatch = document.getElementById("circleSwatch");
+      const barSwatch = document.getElementById("barSwatch");
+      const radialSwatch = document.getElementById("radialSwatch");
+
+      function hexToRgba(hex, a) {
+        const n = parseInt(hex.slice(1), 16);
+        const r = (n >> 16) & 255;
+        const g = (n >> 8) & 255;
+        const b = n & 255;
+        return `rgba(${r},${g},${b},${a})`;
+      }
+
+      function updateSwatches() {
+        particleSwatch.style.background = hexToRgba(
+          particleColor.value,
+          particleAlpha.value
+        );
+        circleSwatch.style.background = hexToRgba(
+          circleColor.value,
+          circleAlpha.value
+        );
+        barSwatch.style.background = hexToRgba(barColor.value, barAlpha.value);
+        radialSwatch.style.background = hexToRgba(
+          radialColor.value,
+          radialAlpha.value
+        );
+      }
+      [
+        particleColor,
+        particleAlpha,
+        circleColor,
+        circleAlpha,
+        barColor,
+        barAlpha,
+        radialColor,
+        radialAlpha,
+      ].forEach((el) => el.addEventListener("input", updateSwatches));
+      updateSwatches();
+
+      // Particle system
+      const particles = [];
+      const PARTICLE_COUNT = 300;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: (Math.random() - 0.5) * 0.6,
+          size: 1 + Math.random() * 1.8,
+        });
+      }
+
+      // UI sliders
+      const inwardSlider = document.getElementById("inwardForce");
+      const outwardSlider = document.getElementById("outwardForce");
+      const randomnessSlider = document.getElementById("randomness");
+
+      // toggles
+      let showParticles = true;
+      let showBars = true;
+      let radialBars = false;
+
+      // help overlay
+      const helpOverlay = document.getElementById("helpOverlay");
+      let helpVisible = false;
+
+      // color presets
+      const presets = [
+        {
+          particle: "#00ffff",
+          pa: 1,
+          circle: "#ffffff",
+          ca: 0.5,
+          bar: "#ff00ff",
+          ba: 0.7,
+          radial: "#ffff00",
+          ra: 0.8,
+        },
+        {
+          particle: "#9be15d",
+          pa: 0.95,
+          circle: "#0ea5a4",
+          ca: 0.35,
+          bar: "#60a5fa",
+          ba: 0.8,
+          radial: "#f97316",
+          ra: 0.9,
+        },
+        {
+          particle: "#ff6b6b",
+          pa: 0.95,
+          circle: "#111827",
+          ca: 0.45,
+          bar: "#a78bfa",
+          ba: 0.75,
+          radial: "#34d399",
+          ra: 0.85,
+        },
+      ];
+      let presetIndex = 0;
+      function applyPreset(idx) {
+        const p = presets[idx];
+        particleColor.value = p.particle;
+        particleAlpha.value = p.pa;
+        circleColor.value = p.circle;
+        circleAlpha.value = p.ca;
+        barColor.value = p.bar;
+        barAlpha.value = p.ba;
+        radialColor.value = p.radial;
+        radialAlpha.value = p.ra;
+        updateSwatches();
+      }
+
+      // keyboard handling (big steps)
+      const STEP_OUTWARD = 0.1; // big steps
+      const STEP_INWARD = 0.1;
+      const STEP_RANDOM = 0.1;
+
+      window.addEventListener("keydown", (e) => {
+        // ignore input focus
+        const tag = (e.target && e.target.tagName) || "";
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+        const key = e.key.toLowerCase();
+        if (key === "h") {
+          helpVisible = !helpVisible;
+          helpOverlay.style.display = helpVisible ? "block" : "none";
+        } else if (key === "m") {
+          setupAudio(true);
+        } else if (key === "t") {
+          setupAudio(false);
+        } else if (key === "p") {
+          showParticles = !showParticles;
+        } else if (key === "b") {
+          showBars = !showBars;
+        } else if (key === "r") {
+          radialBars = !radialBars;
+        } else if (key === "c") {
+          presetIndex = (presetIndex + 1) % presets.length;
+          applyPreset(presetIndex);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (e.shiftKey) {
+            // randomness +
+            let v = parseFloat(randomnessSlider.value) + STEP_RANDOM;
+            randomnessSlider.value = Math.min(1, v);
+          } else {
+            let v = parseFloat(outwardSlider.value) + STEP_OUTWARD;
+            outwardSlider.value = Math.min(parseFloat(outwardSlider.max), v);
+          }
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (e.shiftKey) {
+            let v = parseFloat(randomnessSlider.value) - STEP_RANDOM;
+            randomnessSlider.value = Math.max(0, v);
+          } else {
+            let v = parseFloat(outwardSlider.value) - STEP_OUTWARD;
+            outwardSlider.value = Math.max(parseFloat(outwardSlider.min), v);
+          }
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          let v = parseFloat(inwardSlider.value) + STEP_INWARD;
+          inwardSlider.value = Math.min(parseFloat(inwardSlider.max), v);
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          let v = parseFloat(inwardSlider.value) - STEP_INWARD;
+          inwardSlider.value = Math.max(parseFloat(inwardSlider.min), v);
+        }
+      });
+
+      // draw loop
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!analyser || !dataArray) {
+          requestAnimationFrame(draw);
+          return;
+        }
+
+        analyser.getByteFrequencyData(dataArray);
+        // compute simple RMS from time-domain via pseudo approach: use frequency bins as proxy (ok for visualization)
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i] * dataArray[i];
+        }
+        const rms = Math.sqrt(sum / dataArray.length) / 255;
+
+        const cx = canvas.width / 2,
+          cy = canvas.height / 2;
+        const baseRadius = 50;
+        const circleRadius = baseRadius + rms * 60;
+
+        // particles
+        if (showParticles) {
+          const inward = parseFloat(inwardSlider.value);
+          const outward = parseFloat(outwardSlider.value);
+          const randomness = parseFloat(randomnessSlider.value);
+
+          for (const p of particles) {
+            const dx = cx - p.x;
+            const dy = cy - p.y;
+            let dist = Math.hypot(dx, dy) || 0.0001;
+            const nx = dx / dist,
+              ny = dy / dist;
+
+            // inward pull
+            p.vx += nx * inward;
+            p.vy += ny * inward;
+
+            // outward push proportional to rms and randomness
+            const randFactor = 1 + (Math.random() * 2 - 1) * randomness; // ~ [1-r, 1+r]
+            const push = rms * outward * randFactor;
+            p.vx -= nx * push;
+            p.vy -= ny * push;
+
+            // update
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vx *= 0.9;
+            p.vy *= 0.9;
+
+            // keep on surface of circle
+            const d2 = Math.hypot(p.x - cx, p.y - cy);
+            if (d2 < circleRadius + p.size) {
+              const ang = Math.atan2(p.y - cy, p.x - cx);
+              p.x = cx + Math.cos(ang) * (circleRadius + p.size);
+              p.y = cy + Math.sin(ang) * (circleRadius + p.size);
+              p.vx *= -0.4;
+              p.vy *= -0.4;
+            }
+
+            // draw particle
+            ctx.beginPath();
+            ctx.fillStyle = hexToRgba(particleColor.value, particleAlpha.value);
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // central circle
+          ctx.beginPath();
+          ctx.arc(cx, cy, circleRadius, 0, Math.PI * 2);
+          ctx.fillStyle = hexToRgba(circleColor.value, circleAlpha.value);
+          ctx.fill();
+        }
+
+        // flat bars
+        if (showBars) {
+          const barW = canvas.width / dataArray.length;
+          for (let i = 0; i < dataArray.length; i++) {
+            const v = dataArray[i] / 255;
+            const h = v * canvas.height * 0.45;
+            ctx.fillStyle = hexToRgba(barColor.value, barAlpha.value);
+            ctx.fillRect(i * barW, canvas.height - h, barW - 1, h);
+          }
+        }
+
+        // radial bars
+        if (radialBars) {
+          const bars = dataArray.length;
+          for (let i = 0; i < bars; i++) {
+            const v = dataArray[i] / 255;
+            const angle = (i / bars) * Math.PI * 2;
+            const len = v * 120;
+            const x1 = cx + Math.cos(angle) * circleRadius;
+            const y1 = cy + Math.sin(angle) * circleRadius;
+            const x2 = cx + Math.cos(angle) * (circleRadius + len);
+            const y2 = cy + Math.sin(angle) * (circleRadius + len);
+            ctx.strokeStyle = hexToRgba(radialColor.value, radialAlpha.value);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+          }
+        }
+
+        requestAnimationFrame(draw);
+      }
+
+      // buttons
+      document
+        .getElementById("micBtn")
+        .addEventListener("click", () => setupAudio(true));
+      document
+        .getElementById("toneBtn")
+        .addEventListener("click", () => setupAudio(false));
+
+      // apply initial preset
+      applyPreset(0);
+
+      // start animation
+      requestAnimationFrame(draw);
+    </script>
+  </body>
+</html>
