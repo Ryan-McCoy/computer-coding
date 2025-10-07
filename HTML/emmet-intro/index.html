@@ -4,6 +4,45 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
+    <link rel="stylesheet" href="style.css" />
   </head>
-  <body></body>
+  <body>
+    <h1>Emmet in VSCode</h1>
+    <h2>What is Emmet</h2>
+    <p>
+      Emmet is a built-in tool for VSCode that is used primarily when editing
+      HTML. It gives easy and powerful abbreviations and shortcuts to speed up
+      your workflow.
+    </p>
+    <h2>Basic Usage</h2>
+    <p>
+      The most basic use of Emmet is the abbreviations. For the rest of this
+      document, using an abbreviation means typing whatever is said then hitting
+      tab. When you make a new HTML file, you can use the Emmet abbreviation
+      <code>!</code> to get basic boilerplate. You can also use
+      <code>!!!</code> to get just the doctype declaration. To link a
+      stylesheet, you can use the abbreviation <code>link:css</code>, which will
+      link a stylesheet named style.css, which can be changed afterwards. There
+      are many abbreviations, and generally the name of a tag can be used as an
+      abbreviation.
+    </p>
+    <h2>Advanced Abbreviations</h2>
+    <p>
+      Abbreviations can be combined. If you want to have a div with a p tag
+      inside, you can use <code>div>p</code>. The greater than symbol means to
+      put a tag within another. For an unordered list with three elements, you
+      can use <code>ul>li*3</code>. An asterisk with a number afterwards means
+      to repeat the previous element multiple times. If you want an unordered
+      list with three elements that each have a link and a paragraph, you can
+      use <code>ul>li*3>a,p</code>. Emmet also has some more complicated
+      abbreviations. For example, <code>a:blank</code> will automatically add
+      the options to make it safe to link to an external site.
+    </p>
+    <h3>Classes and ids</h3>
+    <p>
+      With Emmet, placing a hashtag (#) after an element name will give it the
+      id of whatever comes after the hashtag. For example,
+      <code>div#main</code> will create a div with id main.
+    </p>
+  </body>
 </html>
