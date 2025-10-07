@@ -1,0 +1,94 @@
+:root {
+    --ink: #222;
+    --muted: #6b7280;
+    --accent: #063e57;
+    --bg: #f8fafc;
+    --panel: #fff;
+}
+* {
+    box-sizing: border-box;
+}
+html,
+body {
+    margin: 0;
+    font-family:
+        system-ui,
+        Segoe UI,
+        Roboto,
+        Helvetica,
+        Arial;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+}
+
+/* header */
+.site-header {
+    padding: 12px 20px;
+    background: #0b2530;
+    color: white;
+    top: 0px;
+}
+.title {
+    margin: 0;
+}
+.nav a {
+    color: #c7f0ff;
+    text-decoration: none;
+    margin-right: 12px;
+}
+.nav a:hover {
+    text-decoration: underline;
+}
+
+/* layout */
+.container {
+    max-width: 880px;
+    margin: 24px auto;
+    padding: 0 16px;
+}
+
+/* card */
+.card {
+    background: var(--panel);
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+}
+.card h2 {
+    margin-top: 4px;
+}
+.lead {
+    color: var(--muted);
+}
+
+.card .lead {
+    color: #225295;
+}
+.btn {
+    border: 1px solid #e5e7eb;
+    padding: 10px 14px;
+    border-radius: 25px;
+    background: #f1f5f9;
+    cursor: pointer;
+}
+.btn.primary {
+    background: #043950;
+    color: white;
+    border-color: transparent;
+}
+
+.btn.primary {}
+
+/* a small “bug” to find */
+.site-footer {
+    padding: 8px 16px;
+    background: #0b2530;
+    color: white;
+    margin-top: 24px;
+    border-top: 8px solid #2580a7;
+    position: fixed;
+    width: 100%;
+    bottom: 0px;
+}
