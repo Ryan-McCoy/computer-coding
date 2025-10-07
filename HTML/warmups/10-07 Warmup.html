@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CSS Mission Patch — Node Ω-19</title>
+    <style>
+      /* THEME — tweak these first */
+      :root {
+        --ink: #0a0a0a; /* page bg */
+        --paper: #e6d8ad; /* terminal amber */
+        --accent: #ff9e3d; /* hot edge */
+        --cool: #7fd3ff; /* optional cool */
+        --ring: 500px; /* patch size baseline   */
+        --thick: 6px; /* border thickness */
+        --text-color: #bbaf8a;
+        --beacon-color: #ffffff;
+      }
+
+      /* layout */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--ink);
+        color: var(--paper);
+        font: 24px/1.4 monospace;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      /* patch frame */
+      .patch {
+        position: relative;
+        width: calc(var(--ring) * 1.05);
+        height: calc(var(--ring) * 1.25);
+        display: grid;
+        place-items: center;
+        background: #000;
+        border: var(--thick) solid var(--paper);
+        box-shadow: 0 0 0 2px #000 inset, 0 18px 60px #000;
+        padding: 18px;
+      }
+
+      /* inner shield using clip-path */
+      .shield {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(120% 80% at 50% 20%, #111 0 40%, #000 60%),
+          #000;
+
+        border: var(--thick) solid var(--paper);
+        box-shadow: inset 0 0 0 2px #000;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      /* orbital ring built from pseudo-elements */
+      .shield::before,
+      .shield::after {
+        content: "";
+        position: absolute;
+        inset: 12% 10%;
+        border: var(--thick) solid var(--paper);
+        border-radius: 50%;
+      }
+      .shield::after {
+        inset: 20% 18%;
+        border-color: var(--accent);
+        filter: drop-shadow(0 0 8px rgba(255, 158, 61, 0.35));
+      }
+
+      /* planet + atmosphere (pure CSS layers) */
+      .planet {
+        position: absolute;
+        width: calc(var(--ring) * 0.45);
+        height: calc(var(--ring) * 0.45);
+        border-radius: 50%;
+        background: radial-gradient(
+            circle at 40% 40%,
+            #fff2 0 35%,
+            transparent 36%
+          ),
+          radial-gradient(
+            circle at 50% 65%,
+            rgba(255, 158, 61, 0.35),
+            transparent 60%
+          ),
+          radial-gradient(circle at 50% 50%, #1b1b1b 0 60%, #000 61%);
+        box-shadow: 0 0 0 2px #000, 0 0 0 var(--thick) var(--paper);
+      }
+
+      /* orbiting beacon */
+      .beacon {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          var(--beacon-color) 0 40%,
+          var(--accent) 41% 80%,
+          transparent 81%
+        );
+        box-shadow: 0 0 14px var(--accent);
+        transform-origin: calc(var(--ring) * 0.22) 0;
+        animation: orbit 5s linear infinite;
+      }
+      @keyframes orbit {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* titles */
+      .title {
+        position: absolute;
+        top: 10px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        color: var(--text-color);
+      }
+      .call {
+        position: absolute;
+        bottom: 16px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        letter-spacing: 0.08em;
+        color: var(--text-color);
+      }
+      .coords {
+        position: absolute;
+        bottom: 50px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--text-color);
+        opacity: 0.9;
+      }
+
+      /* hover flourish (stretch) */
+      .patch:hover .shield {
+        --ink: #0a0a0a; /* page bg */
+        --paper: #6a634c; /* terminal amber */
+        --accent: #6c441b; /* hot edge */
+        --cool: #7fd3ff; /* optional cool */
+        --text-color: #6b6450;
+        --beacon-color: #6a6a6a;
+        --ring: 500px; /* patch size baseline   */
+        --thick: 6px; /* border thickness */
+      }
+
+      /* responsive scale */
+      @media (max-width: 480px) {
+        :root {
+          --ring: 200px;
+          --thick: 5px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="patch" role="img" aria-label="Mission patch for Node Omega-19">
+      <div class="shield">
+        <div class="title">NODE Ω-19 // FIRST CONTACT</div>
+        <div class="planet" style="top: 34%"></div>
+        <div class="beacon" aria-hidden="true"></div>
+        <div class="coords">RA 18h 36m • DEC −23° 55′</div>
+        <div class="call">EARTH COMMAND // PUBLIC/REDACTED</div>
+      </div>
+    </div>
+  </body>
+</html>
