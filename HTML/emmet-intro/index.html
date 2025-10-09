@@ -34,15 +34,32 @@
       can use <code>ul>li*3</code>. An asterisk with a number afterwards means
       to repeat the previous element multiple times. If you want an unordered
       list with three elements that each have a link and a paragraph, you can
-      use <code>ul>li*3>a,p</code>. Emmet also has some more complicated
+      use <code>ul>li*3>a/p</code>. Emmet also has some more complicated
       abbreviations. For example, <code>a:blank</code> will automatically add
       the options to make it safe to link to an external site.
     </p>
     <h3>Classes and ids</h3>
     <p>
-      With Emmet, placing a hashtag (#) after an element name will give it the
-      id of whatever comes after the hashtag. For example,
-      <code>div#main</code> will create a div with id main.
+      In Emmet, classes and ids are represented the same way they are in CSS.
+      This means that, to make a div with id main, you would use
+      <code>div#main</code>. To make a div with class card, you would use
+      <code>div.card</code>. These can be combined, so a div with id main and
+      class card would be <code>div.card#main</code> or
+      <code>div.card#main</code>.
+    </p>
+    <h2>More Emmet</h2>
+    <p>
+      Emmet does more than just add abbreviations. It also adds commands that
+      can be used to speed up development. These are all used from the command
+      palette, accessible via <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> on
+      most computers, or <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> on MacOS.
+      The most simple commands are <code>Emmet: Balance (outward)</code> and
+      <code>Emmet: Balance (inward)</code>. These are used to select the tags
+      that are wrapping your current tag. These are primarily used in
+      conjunction with the other commands, such as
+      <code>Emmet: Update Tag</code>, which replaces the currently selected tag
+      with one of your choosing. There are several other commands, but the most
+      important ones are listed above.
     </p>
   </body>
 </html>
