@@ -4,4 +4,5 @@ B: The margin of 20px increases the distance between them by 40px. The margin is
 C: The change does not initially affect anything, as the class that sets box-sizing to content-box has a higher specificity 
 than the new class. When that specific declaration is disabled (in devtools), the two boxes become the same size, as the border 
 and padding are now counted in the content box, making the total rendered dimensions 200x200 px.
-D:
+D: Disabling either decreases the total size. Disabling the padding reduces the gap between the inner and outer boxes to only
+the margin. Disabling the border only removes the borders, everything inside stays the same.
