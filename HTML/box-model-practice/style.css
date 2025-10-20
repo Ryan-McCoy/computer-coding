@@ -28,6 +28,7 @@ h1 {
     align-items: center;
     justify-content: center;
     box-sizing: content-box; /* default */
+    margin: 20px;
 }
 
 .border-box {

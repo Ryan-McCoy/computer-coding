@@ -1,1 +1,2 @@
 A: The content box has a width of 200px, since width does not include margins, padding or the border.
+B: The margin of 20px increases the distance between them by 40px. The margin is extra spacing that is not rendered.
