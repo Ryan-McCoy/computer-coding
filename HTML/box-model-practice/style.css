@@ -35,3 +35,8 @@ h1 {
     background-color: #34d399;
     box-sizing: border-box;
 }
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}

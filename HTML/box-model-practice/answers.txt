@@ -1,2 +1,7 @@
-A: The content box has a width of 200px, since width does not include margins, padding or the border.
+A: The content box has a width of 200px, since width does not include margins, padding or the border. This changes with 
+the border box, which includes the border and padding.
 B: The margin of 20px increases the distance between them by 40px. The margin is extra spacing that is not rendered.
+C: The change does not initially affect anything, as the class that sets box-sizing to content-box has a higher specificity 
+than the new class. When that specific declaration is disabled (in devtools), the two boxes become the same size, as the border 
+and padding are now counted in the content box, making the total rendered dimensions 200x200 px.
+D:
